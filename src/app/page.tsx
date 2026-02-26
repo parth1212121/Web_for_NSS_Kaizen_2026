@@ -5,6 +5,8 @@ import { database } from "@/lib/firebase";
 import { ref, onValue, runTransaction } from "firebase/database";
 import confetti from "canvas-confetti";
 
+export const dynamic = "force-static";
+
 export default function Home() {
   const [count, setCount] = useState<number>(0);
   const [hasVoted, setHasVoted] = useState<boolean>(false);
