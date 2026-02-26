@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { database } from "@/lib/firebase";
 import { ref, onValue, runTransaction } from "firebase/database";
-import confetti from "canvas-confetti";
 
 export const dynamic = "force-static";
 
@@ -51,44 +50,7 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // Fire confetti
-  const fireConfetti = useCallback(() => {
-    const duration = 3000;
-    const end = Date.now() + duration;
 
-    const colors = ["#2563eb", "#3b82f6", "#f59e0b", "#10b981", "#8b5cf6", "#ec4899"];
-
-    const frame = () => {
-      confetti({
-        particleCount: 3,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0, y: 0.7 },
-        colors,
-      });
-      confetti({
-        particleCount: 3,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1, y: 0.7 },
-        colors,
-      });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    };
-
-    // Big initial burst
-    confetti({
-      particleCount: 100,
-      spread: 100,
-      origin: { y: 0.6 },
-      colors,
-    });
-
-    frame();
-  }, []);
 
   // Handle vote
   const handleVote = async () => {
@@ -105,8 +67,7 @@ export default function Home() {
       localStorage.setItem("kaizen_voted", "true");
       setHasVoted(true);
 
-      // Fire confetti
-      fireConfetti();
+
 
       // Show success message after a brief delay
       setTimeout(() => {
