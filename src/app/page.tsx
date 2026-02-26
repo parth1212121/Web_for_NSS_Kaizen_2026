@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { database } from "@/lib/firebase";
-import { ref, onValue, runTransaction } from "firebase/database";
+import { useEffect, useState, useRef } from "react";
 
 export const dynamic = "force-static";
 
@@ -13,61 +11,55 @@ export default function Home() {
   const [showSuccess, setShowSuccess] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDbConnected, setIsDbConnected] = useState<boolean>(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check localStorage on mount
+  // Fetch counter from API
+  const fetchCount = async () => {
+    try {
+      const res = await fetch("/api/count");
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      setCount(data.count);
+      setIsDbConnected(true);
+      setIsLoading(false);
+    } catch {
+      console.error("Error fetching counter");
+      setIsDbConnected(false);
+      setIsLoading(false);
+    }
+  };
+
+  // Check localStorage on mount + start polling
   useEffect(() => {
     const voted = localStorage.getItem("kaizen_voted");
     if (voted === "true") {
       setHasVoted(true);
       setShowSuccess(true);
     }
+
+    // Fetch immediately, then poll every 5 seconds
+    fetchCount();
+    intervalRef.current = setInterval(fetchCount, 5000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
-
-  // Real-time listener for counter
-  useEffect(() => {
-    if (!database) {
-      setIsDbConnected(false);
-      setIsLoading(false);
-      return;
-    }
-
-    const counterRef = ref(database, "counter");
-
-    const unsubscribe = onValue(
-      counterRef,
-      (snapshot) => {
-        const value = snapshot.exists() ? snapshot.val() : 0;
-        setCount(value);
-        setIsLoading(false);
-      },
-      (error) => {
-        console.error("Firebase listener error:", error);
-        setIsDbConnected(false);
-        setIsLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-
 
   // Handle vote
   const handleVote = async () => {
-    if (hasVoted || isAnimating || !database) return;
+    if (hasVoted || isAnimating) return;
 
     setIsAnimating(true);
 
     try {
-      const counterRef = ref(database, "counter");
-      await runTransaction(counterRef, (currentValue) => {
-        return (currentValue || 0) + 1;
-      });
+      const res = await fetch("/api/count", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to increment");
+      const data = await res.json();
 
+      setCount(data.count);
       localStorage.setItem("kaizen_voted", "true");
       setHasVoted(true);
-
-
 
       // Show success message after a brief delay
       setTimeout(() => {

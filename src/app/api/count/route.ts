@@ -1,9 +1,10 @@
 import { database } from "@/lib/firebase";
-import { ref, get } from "firebase/database";
+import { ref, get, runTransaction } from "firebase/database";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+// GET — read current counter value
 export async function GET() {
     try {
         if (!database) {
@@ -13,7 +14,7 @@ export async function GET() {
                     status: 503,
                     headers: {
                         "Access-Control-Allow-Origin": "*",
-                        "Access-Control-Allow-Methods": "GET",
+                        "Access-Control-Allow-Methods": "GET, POST",
                     },
                 }
             );
@@ -28,7 +29,7 @@ export async function GET() {
             {
                 headers: {
                     "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Methods": "GET",
+                    "Access-Control-Allow-Methods": "GET, POST",
                     "Cache-Control": "no-store, max-age=0",
                 },
             }
@@ -42,13 +43,49 @@ export async function GET() {
     }
 }
 
+// POST — atomically increment counter by 1
+export async function POST() {
+    try {
+        if (!database) {
+            return NextResponse.json(
+                { count: 0, error: "Firebase not configured" },
+                { status: 503 }
+            );
+        }
+
+        const counterRef = ref(database, "counter");
+        const result = await runTransaction(counterRef, (currentValue) => {
+            return (currentValue || 0) + 1;
+        });
+
+        const count = result.snapshot.val();
+
+        return NextResponse.json(
+            { count },
+            {
+                headers: {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "GET, POST",
+                    "Cache-Control": "no-store, max-age=0",
+                },
+            }
+        );
+    } catch (error) {
+        console.error("Error incrementing counter:", error);
+        return NextResponse.json(
+            { count: 0, error: "Failed to increment counter" },
+            { status: 500 }
+        );
+    }
+}
+
 export async function OPTIONS() {
     return NextResponse.json(
         {},
         {
             headers: {
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
             },
         }
